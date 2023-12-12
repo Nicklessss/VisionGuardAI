@@ -1,17 +1,16 @@
 import os
 import cv2
+from datetime import datetime
 
 # Ask user name
-user_name = input("Ingresa el nombre del usuario: ")
+user_name = input("Enter the user's name: ")
 
-# create image folders
+# Create image folders
 user_folder = f"users_image/{user_name}"
 os.makedirs(user_folder, exist_ok=True)
+
 # Set up screen capture
 screen_capture = cv2.VideoCapture(0)  # 0 represents the default camera
-
-# Counter for image file names
-image_count = 0
 
 # Control the frames per second
 images_per_second = 2  # You can change this value as needed
@@ -24,11 +23,14 @@ while True:
     # Show real-time video (optional)
     cv2.imshow("Screen Recording", frame)
 
-    # Save image if the desired images per second rate is reached
-    if image_count % int(30 / images_per_second) == 0:
-        cv2.imwrite(f"{user_folder}/frame_{image_count}.jpg", frame)
+    # Get current date and time
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    image_count += 1
+    # Create unique image name based on user and timestamp
+    image_name = f"{user_folder}/{user_name}_{current_time}.jpg"
+
+    # Save image
+    cv2.imwrite(image_name, frame)
 
     # Stop recording when 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord("q"):
