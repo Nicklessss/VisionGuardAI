@@ -1,92 +1,73 @@
-# Importamos las librerias
+# Import necessary libraries
 import cv2
+import face_recognition
+from recognition import javi_encodings, david_encodings
 
-# Realizamos VideoCaptura
+# Initialize the video capture
 cap = cv2.VideoCapture(0)
 
-# Leemos el modelo
-net = cv2.dnn.readNetFromCaffe(
-    "opencv_face_detector.prototxt", "res10_300x300_ssd_iter_140000.caffemodel"
-)
+# Path to models
+prototxt_path = "models/deploy.prototxt"
+caffemodel_path = "models/res10_300x300_ssd_iter_140000.caffemodel"
 
-# Parametros del modelo
-# Tamaño
+# Load the face detection model with the correct paths
+net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+
+# Model parameters
 anchonet = 300
 altonet = 300
-# Valores medios de los canales de color
 media = [104, 117, 123]
 umbral = 0.7
 
-# Empezamos
+# Start processing the video
 while True:
-    # Leemos los frames
     ret, frame = cap.read()
-
-    # Si hay error
     if not ret:
         break
 
-    # Realizamos conversion de forma
     frame = cv2.flip(frame, 1)
-
-    # Extraemos info de los frames
     altoframe = frame.shape[0]
     anchoframe = frame.shape[1]
 
-    # Preprocesamos la imagen
-    # Images - Factor de escala - tamaño - media de color - Formato de color(BGR-RGB) - Recorte
-    blob = cv2.dnn.blobFromImage(
-        frame, 1.0, (anchonet, altonet), media, swapRB=False, crop=False
-    )
-
-    # Corremos el modelo
+    # Preprocess the image for the neural network
+    blob = cv2.dnn.blobFromImage(frame, 1.0, (anchonet, altonet), media, swapRB=False, crop=False)
     net.setInput(blob)
     detecciones = net.forward()
 
-    # Iteramos
+    # Iterate over each detection
     for i in range(detecciones.shape[2]):
-        # Extraemos la confianza de esa deteccion
         conf_detect = detecciones[0, 0, i, 2]
-        # Si superamos el umbral (70% de probabilidad de que sea un rostro)
         if conf_detect > umbral:
-            # Extraemos las coordenadas
             xmin = int(detecciones[0, 0, i, 3] * anchoframe)
             ymin = int(detecciones[0, 0, i, 4] * altoframe)
             xmax = int(detecciones[0, 0, i, 5] * anchoframe)
             ymax = int(detecciones[0, 0, i, 6] * altoframe)
 
-            # Dibujamos el rectangulo
+            # Draw the rectangle around each face
             cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
-            # Texto que vamos a mostrar
-            label = "Confianza de deteccion: %.4f" % conf_detect
-            # Tamaño del fondo del label
-            label_size, base_line = cv2.getTextSize(
-                label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1
-            )
-            # Colocamos fondo al texto
-            cv2.rectangle(
-                frame,
-                (xmin, ymin - label_size[1]),
-                (xmin + label_size[0], ymin + base_line),
-                (0, 0, 0),
-                cv2.FILLED,
-            )
-            # Colocamps el texto
-            cv2.putText(
-                frame,
-                label,
-                (xmin, ymin),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 0, 255),
-                1,
-            )
 
+            # Face recognition
+            face_locations = [(ymin, xmax, ymax, xmin)]  # Convert to face_recognition format
+            current_encodings = face_recognition.face_encodings(frame, face_locations)
+
+            access_label = "ACCESO DENEGADO"
+            for encoding in current_encodings:
+                javi_results = face_recognition.compare_faces(javi_encodings, encoding)
+                david_results = face_recognition.compare_faces(david_encodings, encoding)
+
+                if True in javi_results or True in david_results:
+                    access_label = "ACCESO PERMITIDO"
+
+            # Display the access label on the frame
+            cv2.putText(frame, access_label, (xmin, ymax + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+    # Display the result
     cv2.imshow("DETECCION DE ROSTROS", frame)
 
-    t = cv2.waitKey(1)
-    if t == 27:
+    # Break the loop with the 'Esc' key
+    if cv2.waitKey(1) == 27:
         break
 
-cv2.destroyAllWindows()
+# Release the video capture and close all windows
 cap.release()
+cv2.destroyAllWindows()
