@@ -1,7 +1,7 @@
 # Import necessary libraries
 import cv2
 import face_recognition
-from recognition import javi_encodings, david_encodings
+from utils.recognition import javi_encodings, david_encodings
 
 # Initialize the video capture
 cap = cv2.VideoCapture(0)
@@ -30,7 +30,9 @@ while True:
     anchoframe = frame.shape[1]
 
     # Preprocess the image for the neural network
-    blob = cv2.dnn.blobFromImage(frame, 1.0, (anchonet, altonet), media, swapRB=False, crop=False)
+    blob = cv2.dnn.blobFromImage(
+        frame, 1.0, (anchonet, altonet), media, swapRB=False, crop=False
+    )
     net.setInput(blob)
     detecciones = net.forward()
 
@@ -47,19 +49,31 @@ while True:
             cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
 
             # Face recognition
-            face_locations = [(ymin, xmax, ymax, xmin)]  # Convert to face_recognition format
+            face_locations = [
+                (ymin, xmax, ymax, xmin)
+            ]  # Convert to face_recognition format
             current_encodings = face_recognition.face_encodings(frame, face_locations)
 
             access_label = "ACCESO DENEGADO"
             for encoding in current_encodings:
                 javi_results = face_recognition.compare_faces(javi_encodings, encoding)
-                david_results = face_recognition.compare_faces(david_encodings, encoding)
+                david_results = face_recognition.compare_faces(
+                    david_encodings, encoding
+                )
 
                 if True in javi_results or True in david_results:
                     access_label = "ACCESO PERMITIDO"
 
             # Display the access label on the frame
-            cv2.putText(frame, access_label, (xmin, ymax + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            cv2.putText(
+                frame,
+                access_label,
+                (xmin, ymax + 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 255, 0),
+                1,
+            )
 
     # Display the result
     cv2.imshow("DETECCION DE ROSTROS", frame)
